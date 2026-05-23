@@ -459,6 +459,18 @@ def _classify_and_publish(all_adsb_flights):
 
             ac_category = "heli" if model_upper in _HELI_TYPES_BACKEND else "plane"
 
+            # Source attribution: prefer the explicit ``source`` tag stamped
+            # at fetch time (adsb.lol, OpenSky). If absent, fall back to the
+            # legacy ``supplemental_source`` (airplanes.live, adsb.fi) so
+            # supplementals are still attributed without changing their
+            # tagger. Final fallback "adsb.lol" preserves prior behavior for
+            # any caller that synthesizes records without going through one
+            # of our fetchers (e.g. tests).
+            source = (
+                f.get("source")
+                or f.get("supplemental_source")
+                or "adsb.lol"
+            )
             flights.append(
                 {
                     "callsign": flight_str,
@@ -480,6 +492,7 @@ def _classify_and_publish(all_adsb_flights):
                     "airline_code": airline_code,
                     "aircraft_category": ac_category,
                     "nac_p": f.get("nac_p"),
+                    "source": source,
                 }
             )
         except (ValueError, TypeError, KeyError, AttributeError) as loop_e:
@@ -849,7 +862,15 @@ def _fetch_adsb_lol_regions():
             res = fetch_with_curl(url, timeout=10)
             if res.status_code == 200:
                 data = res.json()
-                return data.get("ac", [])
+                aircraft = data.get("ac", [])
+                # Stamp the source at the fetch site so attribution survives
+                # the OpenSky/supplemental dedupe-by-hex merge downstream.
+                # Previously adsb.lol records carried no marker while OpenSky
+                # records got ``is_opensky: True`` — which made flight tooltips
+                # look like everything came from OpenSky.
+                for a in aircraft:
+                    a["source"] = "adsb.lol"
+                return aircraft
         except (
             requests.RequestException,
             ConnectionError,
@@ -932,6 +953,7 @@ def _enrich_with_opensky_and_supplemental(adsb_flights):
                                     "gs": (s[9] * 1.94384) if s[9] else 0,
                                     "t": "Unknown",
                                     "is_opensky": True,
+                                    "source": "OpenSky",
                                 }
                             )
                     elif os_res.status_code == 429:

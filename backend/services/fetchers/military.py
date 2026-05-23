@@ -171,6 +171,7 @@ def fetch_military_flights():
                 h = a.get("hex", "").lower()
                 if h and h not in seen_hex:
                     seen_hex.add(h)
+                    a["source"] = "adsb.lol"
                     all_mil_ac.append(a)
     except Exception as e:
         logger.warning(f"adsb.lol mil fetch failed: {e}")
@@ -182,6 +183,7 @@ def fetch_military_flights():
                 h = a.get("hex", "").lower()
                 if h and h not in seen_hex:
                     seen_hex.add(h)
+                    a["source"] = "airplanes.live"
                     all_mil_ac.append(a)
             logger.info(f"airplanes.live mil: +{len(resp2.json().get('ac', []))} raw, {len(all_mil_ac)} total unique")
     except Exception as e:
@@ -234,6 +236,7 @@ def fetch_military_flights():
                             "registration": f.get("r", "N/A"),
                             "icao24": icao_hex,
                             "squawk": f.get("squawk", ""),
+                            "source": f.get("source") or "adsb.lol",
                         })
                         continue
 
@@ -258,7 +261,8 @@ def fetch_military_flights():
                         "model": f.get("t", "Unknown"),
                         "icao24": icao_hex,
                         "speed_knots": speed_knots,
-                        "squawk": f.get("squawk", "")
+                        "squawk": f.get("squawk", ""),
+                        "source": f.get("source") or "adsb.lol",
                     })
                 except Exception as loop_e:
                     logger.error(f"Mil flight interpolation error: {loop_e}")
