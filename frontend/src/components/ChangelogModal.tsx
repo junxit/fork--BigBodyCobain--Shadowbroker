@@ -101,7 +101,13 @@ const BUG_FIXES = [
   'OpenClaw agents can invoke the Recon panel backends via `osint_lookup` without raw `/api/osint/*` HTTP calls or local-operator browser auth.',
 ];
 
-const CONTRIBUTORS = [
+type ChangelogContributor = {
+  name: string;
+  desc: string;
+  pr?: string;
+};
+
+const CONTRIBUTORS: ChangelogContributor[] = [
   {
     name: 'OSIRIS (simplifaisoul/osiris)',
     desc: 'MIT-licensed recon stack — adapted for ShadowBroker proxy model (see backend/third_party/osiris/NOTICE.md)',
