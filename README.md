@@ -91,6 +91,8 @@ Both paths produce identical containers — same source, same CI, same images by
 
 Open `http://localhost:3000` to view the dashboard! *(Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine)*
 
+> **Join the private InfoNet swarm (sb-testnet-0):** Click **NODE** in the dashboard, or run `./meshnode.sh` for a headless participant. No manual peer list — fleet defaults discover the seed and pull the signed manifest automatically. Set `MESH_INFONET_FLEET_JOIN=false` in `.env` for a private solo node.
+
 > **Backend port already in use?** The browser only needs port `3000`, but the backend API is also published on host port `8000` for local diagnostics. If another app already uses `8000`, create or edit `.env` next to `docker-compose.yml` and set `BACKEND_PORT=8001`, then run `docker compose up -d`.
 
 > **Blank news/UAP/bases/wastewater after several minutes?** Check for backend OOM restarts with `docker events --since 30m --filter container=shadowbroker-backend --filter event=oom`. The default compose file gives the backend 4GB; if your host has less memory, reduce enabled feeds or set `BACKEND_MEMORY_LIMIT=3G` and expect slower/heavier layers to warm more gradually.

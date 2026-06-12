@@ -1469,10 +1469,9 @@ def _refresh_node_peer_store(*, now: float | None = None) -> dict[str, Any]:
 
 def _swarm_bootstrap_after_transport_ready() -> None:
     try:
-        from services.mesh.mesh_swarm_runtime import announce_local_peer_to_seeds, refresh_swarm_manifest_from_seeds
+        from services.mesh.mesh_swarm_runtime import join_swarm_with_retries
 
-        announce_local_peer_to_seeds(force=True)
-        refresh_swarm_manifest_from_seeds(force=True)
+        join_swarm_with_retries(attempts=4, delay_s=15.0, force=True)
         _refresh_node_peer_store()
     except Exception:
         logger.warning("swarm bootstrap after transport ready failed", exc_info=True)

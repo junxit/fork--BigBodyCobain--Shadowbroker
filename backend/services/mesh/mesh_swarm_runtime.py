@@ -389,6 +389,52 @@ def announce_local_peer_to_seeds(*, now: float | None = None, force: bool = Fals
     return {"ok": ok, "peer_url": peer_url, "results": results}
 
 
+def _announce_succeeded(announce: dict[str, Any]) -> bool:
+    if not bool(announce.get("ok")):
+        return False
+    results = announce.get("results") or []
+    return any(bool(item.get("ok")) and int(item.get("status_code") or 0) == 200 for item in results)
+
+
+def _manifest_succeeded(manifest: dict[str, Any]) -> bool:
+    if not bool(manifest.get("ok")):
+        return False
+    peer_count = int(manifest.get("merged_peer_count") or manifest.get("peer_count") or 0)
+    return peer_count >= 1
+
+
+def join_swarm_with_retries(
+    *,
+    attempts: int = 6,
+    delay_s: float = 15.0,
+    force: bool = True,
+) -> dict[str, Any]:
+    """Announce to seed and pull manifest, retrying while Tor circuits warm up."""
+    last_announce: dict[str, Any] = {"ok": False, "detail": "not attempted"}
+    last_manifest: dict[str, Any] = {"ok": False, "detail": "not attempted"}
+    tries = max(1, int(attempts))
+    pause_s = max(1.0, float(delay_s))
+    for attempt in range(tries):
+        last_announce = announce_local_peer_to_seeds(force=force)
+        last_manifest = refresh_swarm_manifest_from_seeds(force=force)
+        if _announce_succeeded(last_announce) and _manifest_succeeded(last_manifest):
+            return {
+                "ok": True,
+                "attempts": attempt + 1,
+                "announce": last_announce,
+                "manifest_pull": last_manifest,
+            }
+        if attempt + 1 < tries:
+            time.sleep(pause_s)
+    return {
+        "ok": False,
+        "attempts": tries,
+        "announce": last_announce,
+        "manifest_pull": last_manifest,
+        "detail": "swarm join incomplete after retries",
+    }
+
+
 def push_infonet_events_to_http_peers(events: list[dict[str, Any]]) -> dict[str, Any]:
     import hashlib as _hashlib_mod
     import hmac as _hmac_mod

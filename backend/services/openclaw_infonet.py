@@ -47,10 +47,7 @@ def ensure_infonet_ready(*, join_swarm: bool = True) -> dict[str, Any]:
     """Warm Tor, enable the participant node, and optionally join the swarm."""
     from routers.ai_intel import _write_env_value
     from services.config import get_settings
-    from services.mesh.mesh_swarm_runtime import (
-        announce_local_peer_to_seeds,
-        refresh_swarm_manifest_from_seeds,
-    )
+    from services.mesh.mesh_swarm_runtime import join_swarm_with_retries
     from services.node_settings import read_node_settings, write_node_settings
     from services.tor_hidden_service import tor_service
     from services.wormhole_supervisor import _check_arti_ready
@@ -87,9 +84,11 @@ def ensure_infonet_ready(*, join_swarm: bool = True) -> dict[str, Any]:
         steps["node_enabled"] = True
 
     if join_swarm:
-        steps["announce"] = announce_local_peer_to_seeds(force=True)
-        steps["manifest_pull"] = refresh_swarm_manifest_from_seeds(force=True)
-        ok = bool(steps["announce"].get("ok")) or bool(steps["manifest_pull"].get("ok"))
+        joined = join_swarm_with_retries()
+        steps["announce"] = joined.get("announce") or {}
+        steps["manifest_pull"] = joined.get("manifest_pull") or {}
+        steps["swarm_attempts"] = joined.get("attempts")
+        ok = bool(joined.get("ok"))
     else:
         ok = True
 
@@ -102,17 +101,15 @@ def ensure_infonet_ready(*, join_swarm: bool = True) -> dict[str, Any]:
 
 
 def join_infonet_swarm() -> dict[str, Any]:
-    from services.mesh.mesh_swarm_runtime import (
-        announce_local_peer_to_seeds,
-        refresh_swarm_manifest_from_seeds,
-    )
+    from services.mesh.mesh_swarm_runtime import join_swarm_with_retries
 
-    announce = announce_local_peer_to_seeds(force=True)
-    manifest = refresh_swarm_manifest_from_seeds(force=True)
+    joined = join_swarm_with_retries()
     return {
-        "ok": bool(announce.get("ok")) or bool(manifest.get("ok")),
-        "announce": announce,
-        "manifest_pull": manifest,
+        "ok": bool(joined.get("ok")),
+        "announce": joined.get("announce") or {},
+        "manifest_pull": joined.get("manifest_pull") or {},
+        "attempts": joined.get("attempts"),
+        "detail": joined.get("detail"),
     }
 
 
